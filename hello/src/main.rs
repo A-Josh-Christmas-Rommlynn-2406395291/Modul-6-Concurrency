@@ -20,7 +20,9 @@ fn main() {
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        handle_connection(stream);
+        thread::spawn(|| {
+            handle_connection(stream);
+        });
     }
 }
 
@@ -34,7 +36,7 @@ fn handle_connection(mut stream: TcpStream) {
 }
 
 fn build_response(request_line: &str) -> String {
-    let (status_line, file_path) = match request_line {
+    let (status_line, file_path) = match &request_line[..] {
         "GET / HTTP/1.1" => (OK_RESPONSE, "hello.html"),
         "GET /sleep HTTP/1.1" => {
             thread::sleep(Duration::from_secs(10));

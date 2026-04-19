@@ -35,3 +35,21 @@ So, the answer is: `main.rs` needs refactoring, not because it doesn't work now,
 2. The single main thread handles it.
 3. If the request is `/sleep`, that same thread sleeps for 10 seconds.
 4. During those 10 seconds, it cannot move to the next iteration of `listener.incoming()` and cannot handle another request.
+
+## **Commit 5 Reflection Notes**
+### **How the ThreadPool works?**
+**Architecture**
+
+- **The Pool**: Maintains a fixed-size vector of `Worker` structs and holds the sending end (`mpsc::Sender`) of a message channel.
+
+- **The Workers**: Each `Worker` is initialized with a spawned thread and a thread-safe, shared reference to the receiving end of the channel (`Arc<Mutex<mpsc::Receiver<Job>>>`).
+
+- **The Channel**: Acts as the job queue bridging the `ThreadPool` (producer) and the `Worker` threads (consumers).
+
+**Execution Flow**
+
+1. **Task Submission**: When `ThreadPool::execute` is called, the provided closure is wrapped into a `Job` (`Box<dyn FnOnce() + Send + 'static>`) and sent down the channel.
+
+2. **Task Retrieval**: The worker threads run in an infinite loop, attempting to lock the Mutex to safely pull the next available `Job` from the `Receiver`.
+
+3. **Task Execution**: Once a worker receives a job, it executes the closure. After completion, the thread immediately becomes available again and loops back to wait for the next job, ensuring up to *N* requests process concurrently without the overhead of unlimited thread creation.
