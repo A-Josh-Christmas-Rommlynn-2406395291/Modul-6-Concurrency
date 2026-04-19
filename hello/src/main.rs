@@ -1,31 +1,43 @@
-use std::{ 
-    fs, 
-    io::{prelude::*, BufReader}, 
-    net::{TcpListener, TcpStream}, 
-}; 
+use std::{
+    fs,
+    io::{BufReader, prelude::*},
+    net::{TcpListener, TcpStream},
+};
+
+const ADDRESS: &str = "127.0.0.1:7878";
+const OK_RESPONSE: &str = "HTTP/1.1 200 OK";
+const NOT_FOUND_RESPONSE: &str = "HTTP/1.1 404 NOT FOUND";
 
 fn main() {
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let listener = TcpListener::bind(ADDRESS).unwrap_or_else(|error| {
+        panic!(
+            "failed to bind to {ADDRESS}: {error}. Make sure no other server is using this port"
+        );
+    });
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         handle_connection(stream);
     }
 }
- 
-fn handle_connection(mut stream: TcpStream) { 
-    let buf_reader = BufReader::new(&mut stream); 
-    let http_request: Vec<_> = buf_reader
-        .lines() 
-        .map(|result| result.unwrap()) 
-        .take_while(|line| !line.is_empty()) 
-        .collect(); 
- 
-    let status_line = "HTTP/1.1 200 OK"; 
-    let contents = fs::read_to_string("hello.html").unwrap(); 
-    let length = contents.len();
-    let response = 
-        format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}"); 
- 
-    stream.write_all(response.as_bytes()).unwrap(); 
-} 
+
+fn handle_connection(mut stream: TcpStream) {
+    let buf_reader = BufReader::new(&mut stream);
+    let request_line = buf_reader.lines().next().unwrap().unwrap();
+
+    let response = build_response(&request_line);
+
+    stream.write_all(response.as_bytes()).unwrap();
+}
+
+fn build_response(request_line: &str) -> String {
+    let (status_line, file_path) = match request_line {
+        "GET / HTTP/1.1" => (OK_RESPONSE, "hello.html"),
+        _ => (NOT_FOUND_RESPONSE, "404.html"),
+    };
+
+    let contents = fs::read_to_string(file_path).unwrap();
+    let content_length = contents.len();
+
+    format!("{status_line}\r\nContent-Length: {content_length}\r\n\r\n{contents}")
+}

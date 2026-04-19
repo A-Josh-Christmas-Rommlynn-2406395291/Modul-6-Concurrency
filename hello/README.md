@@ -17,3 +17,13 @@ So, in summary, it sends the full HTTP response back through the socket, and pan
 The `200 OK` status means the webpage has requested successfully without any problems. It is partially different from `404 Not Found` that webpage requested successfully but has problem.
 
 ![Commit 2 screen capture](/hello/assets/images/commit2.png)
+
+## **Commit 3 Reflection Notes**
+### Why I need to refactor?
+1. In line 11 on `main.rs`, `main()` manages server details directly. If there is configuration, logging, or thread pooling, this file quickly becomes *bloated*.
+2. In line 24 on `main.rs`, `handle_connection()` parses requests with multiple `unwrap()`. This is fragile; invalid requests can cause server panic.
+3. In line 33 on `main.rs`, `build_response()` mixes routing and file I/O. By design, route determination should be separated from how responses are constructed.
+4. In line 34 on `main.rs`, routing is still hardcoded to a single path. As endpoints increase, this match becomes larger and more difficult to maintain.
+5. In line 39 on `main.rs`, the file is read from disk with each request. This is fine for this exercise, but for better structure, the logic for mapping routes, responses, and file handling should usually be separated.
+6. In line 12 on `main.rs` and line 30 on `main.rs`, error handling are inconsistent; there's `panic!` and `unwrap()`, so failure behavior is uncontrolled.
+So, the answer is: `main.rs` needs refactoring, not because it doesn't work now, but because its structure isn't scalable, it's difficult to test each component, and it's too vulnerable to input errors.
