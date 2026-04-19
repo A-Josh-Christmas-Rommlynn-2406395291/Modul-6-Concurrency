@@ -1,8 +1,11 @@
 use std::{
     fs,
-    io::{BufReader, prelude::*},
+    io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},
+    thread,
+    time::Duration,
 };
+// --snip--
 
 const ADDRESS: &str = "127.0.0.1:7878";
 const OK_RESPONSE: &str = "HTTP/1.1 200 OK";
@@ -33,6 +36,10 @@ fn handle_connection(mut stream: TcpStream) {
 fn build_response(request_line: &str) -> String {
     let (status_line, file_path) = match request_line {
         "GET / HTTP/1.1" => (OK_RESPONSE, "hello.html"),
+        "GET /sleep HTTP/1.1" => {
+            thread::sleep(Duration::from_secs(10));
+            (OK_RESPONSE, "hello.html")
+        }
         _ => (NOT_FOUND_RESPONSE, "404.html"),
     };
 
